@@ -1,0 +1,22 @@
+{
+  "name": "bitcoin-simulator",
+  "version": "1.0.0",
+  "description": "Bitcoin simulator",
+  "main": "build/index.js",
+  "scripts": {
+    "dev": "tsc && node build/index.js"
+  },
+  "keywords": [
+    "bitcoin",
+    "blockchain",
+    "typescript",
+    "node"
+  ],
+  "author": "Mateo Galić",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}
