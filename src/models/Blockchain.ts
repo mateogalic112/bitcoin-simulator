@@ -36,6 +36,20 @@ export class Blockchain {
     });
   }
 
+  broadcastBlockForValidation(broadcastingNode: Node, block: Block) {
+    const validations = this.nodes.reduce((acc: number, node: Node) => {
+      if (node !== broadcastingNode && node.validateBlock(block)) {
+        acc++;
+      }
+      return acc;
+    }, 0);
+
+    // If more than half of the nodes validate the block, add it to the chain
+    if (validations > this.nodes.length / 2) {
+      this.chain.push(block);
+    }
+  }
+
   registerNode(node: Node) {
     this.nodes.push(node);
   }

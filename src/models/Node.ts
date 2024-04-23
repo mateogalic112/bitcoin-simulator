@@ -58,11 +58,13 @@ export class Node {
   // When a node finds a proof-of-work, it broadcasts the block to all nodes
   broadcastBlock(block: Block) {
     // send block to network
+    this.blockchain.broadcastBlockForValidation(this, block);
   }
 
   // Nodes accept the block only if all transactions in it are valid and not already spent
   validateBlock(block: Block) {
     // validate block
+    if (block.hash === this.blockchain.difficultyTarget) return true;
   }
 
   // Miners select from a pool of transactions, verifying that the sender has sufficient funds to complete the transaction
