@@ -71,15 +71,18 @@ export class Node {
         this.broadcastBlock(block);
       }
 
-      worker.terminate();
+      worker.postMessage({ command: "shutdown" });
+    });
 
+    worker.on("exit", () => {
       setTimeout(() => {
         this.mineBlock();
       }, (1000 * 60) / this.cpuPower);
     });
 
-    worker.on("error", (msg) => {
-      console.log(msg);
+    worker.on("error", (err) => {
+      console.log(`Worker error: ${err}`);
+      worker.terminate(); // Ensure termination even on error
     });
   }
 
