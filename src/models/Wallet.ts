@@ -71,8 +71,4 @@ export class Wallet {
     // broadcast transaction
     this.blockchain.broadcastTransaction(transaction);
   }
-
-  public getAddress() {
-    return this.address;
-  }
 }

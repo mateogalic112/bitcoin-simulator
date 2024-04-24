@@ -43,6 +43,9 @@ export class Blockchain {
 
     // If more than half of the nodes validate the block, add it to the chain
     if (validations > this.nodes.length / 2) {
+      console.log(
+        `Node ${broadcastingNode.ipAddress} added block #${block.hash} to chain!`
+      );
       this.createNewBlock(block);
     }
   }
@@ -56,6 +59,8 @@ export class Blockchain {
     if (this.chain.length % this.MINING_DIFFICULTY_INTERVAL === 0) {
       this.adjustDifficulty();
     }
+
+    console.log(this.chain);
   }
 
   private adjustBlockReward() {

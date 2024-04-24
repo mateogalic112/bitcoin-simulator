@@ -4,12 +4,18 @@ import { Blockchain } from "./Blockchain";
 import { Transaction } from "./Transaction";
 
 export class Node {
+  private cpuPower = Math.random() * 100; // Simulated CPU power
+
   private mempool: Transaction[] = [];
   private blockchain: Blockchain = new Blockchain();
 
-  constructor(private receivingAddress: string) {
+  constructor(public ipAddress: string, private receivingAddress: string) {
     // register node with blockchain
     this.blockchain.registerNode(this);
+
+    setTimeout(() => {
+      this.mineBlock();
+    }, (1000 * 60) / this.cpuPower);
   }
 
   // Each node collects new transactions into a mempool
@@ -43,13 +49,24 @@ export class Node {
       hashResult = this.calculateHash(blockHeader, blockTransactions);
     }
 
-    const block: Block = {
-      blockHeader,
-      transactions: blockTransactions,
-      hash: hashResult,
-    };
+    if (
+      !this.blockchain.chain.find(
+        (block) =>
+          block.blockHeader.previousBlockHash === blockHeader.previousBlockHash
+      )
+    ) {
+      const block: Block = {
+        blockHeader,
+        transactions: blockTransactions,
+        hash: hashResult,
+      };
 
-    this.broadcastBlock(block);
+      this.broadcastBlock(block);
+    }
+
+    setTimeout(() => {
+      this.mineBlock();
+    }, (1000 * 60) / this.cpuPower);
   }
 
   // When a node finds a proof-of-work, it broadcasts the block to all nodes
