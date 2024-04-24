@@ -3,6 +3,7 @@ export type TransactionInput = {
   toAddress: string;
   amount: number;
   fee: number;
+  timestamp: number;
 };
 
 export class Transaction {

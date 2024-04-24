@@ -60,8 +60,9 @@ export class Blockchain {
       this.adjustDifficulty();
     }
 
-    console.log(this.chain.map((b) => b.hash));
-    console.log(this.getCurrentSupply());
+    console.log(
+      this.chain.map((b) => b.transactions.map((t) => t.input.amount))
+    );
   }
 
   private adjustBlockReward() {
@@ -92,12 +93,6 @@ export class Blockchain {
     );
   }
 
-  getCurrentSupply() {
-    return this.chain.reduce((acc, block) => {
-      return acc + block.transactions[0].input.amount;
-    }, 0);
-  }
-
   private calculateNewBlockReward() {
     this.blockReward = this.blockReward / 2;
 
@@ -118,5 +113,39 @@ export class Blockchain {
 
   removeNode(node: Node) {
     this.nodes = this.nodes.filter((n) => n !== node);
+  }
+
+  getCurrentSupply() {
+    return this.chain.reduce((acc, block) => {
+      return acc + block.transactions[0].input.amount;
+    }, 0);
+  }
+
+  checkBlockHashAlreadyMined(newBlock: Block) {
+    return !!this.chain.find(
+      (block) =>
+        block.blockHeader.previousBlockHash ===
+        newBlock.blockHeader.previousBlockHash
+    );
+  }
+
+  getBalance(address: string) {
+    return this.chain.reduce((chainAcc, block) => {
+      return (
+        chainAcc +
+        block.transactions.reduce((blockAcc, transaction) => {
+          if (transaction.input.fromAddress === address) {
+            return blockAcc - transaction.input.amount - transaction.input.fee;
+          }
+          if (transaction.input.toAddress === address) {
+            return blockAcc + transaction.input.amount;
+          }
+          if (block.transactions[0].input.toAddress === address) {
+            return blockAcc + transaction.input.fee;
+          }
+          return blockAcc;
+        }, 0)
+      );
+    }, 0);
   }
 }

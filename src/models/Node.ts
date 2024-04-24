@@ -2,6 +2,7 @@ import { Block, BlockHeader } from "./Block";
 import { Blockchain } from "./Blockchain";
 import { Transaction } from "./Transaction";
 import { Worker } from "worker_threads";
+import { Wallet } from "./Wallet";
 
 export class Node {
   private cpuPower = Math.random() * 1000; // Simulated CPU power
@@ -9,7 +10,7 @@ export class Node {
   private mempool: Transaction[] = [];
   private blockchain: Blockchain = new Blockchain();
 
-  constructor(public ipAddress: string, private receivingAddress: string) {}
+  constructor(public ipAddress: string, private wallet: Wallet) {}
 
   startMining() {
     // register node with blockchain
@@ -30,17 +31,7 @@ export class Node {
     console.log(`Node ${this.ipAddress} is mining...`);
     const blockHeader = this.createBlockHeader();
 
-    // Simple transaction selection algorithm (highest fee first)
-    // Block size is limited to 1MB
-    const poolTransactions = this.mempool
-      .sort((a, b) => b.input.fee - a.input.fee)
-      .slice(0, 3); // We have fixed transaction size of 250KB for simplicity
-
-    // Include coinbase transaction with pool transactions
-    const blockTransactions = [
-      this.createCoinbaseTransaction(this.receivingAddress),
-      ...poolTransactions,
-    ];
+    const blockTransactions = this.selectBlockTransactions();
 
     // Simple proof-of-work algorithm
     const worker = new Worker(`./build/worker/miner.js`, {
@@ -52,23 +43,20 @@ export class Node {
     });
 
     worker.on("message", (data) => {
-      blockHeader.nonce = data.blockNonce;
-      const hashResult = data.hashResult;
+      blockHeader.nonce = data.blockNonce as number;
+      const hashResult = data.hashResult as string;
+
+      const potentialNewBlock: Block = {
+        blockHeader,
+        transactions: blockTransactions,
+        hash: hashResult,
+      };
 
       if (
-        !this.blockchain.chain.find(
-          (block) =>
-            block.blockHeader.previousBlockHash ===
-            blockHeader.previousBlockHash
-        )
+        !this.blockchain.checkBlockHashAlreadyMined(potentialNewBlock) &&
+        this.validateBlock(potentialNewBlock)
       ) {
-        const block: Block = {
-          blockHeader,
-          transactions: blockTransactions,
-          hash: hashResult,
-        };
-
-        this.broadcastBlock(block);
+        this.broadcastBlock(potentialNewBlock);
       }
 
       worker.postMessage({ command: "shutdown" });
@@ -86,6 +74,29 @@ export class Node {
     });
   }
 
+  /**
+   * Select transactions to include in the block
+   * @dev  Simple transaction selection algorithm (highest fee first)
+   * @notice Block size is limited to 1MB
+   * @returns Array of transactions to include in the block
+   */
+  private selectBlockTransactions() {
+    const STRATING_INDEX = 0; // Slice from the beginning of array
+    const ENDING_INDEX = 3; // Fixed transaction size of 250KB (3 from pool + 1 coinbase)
+
+    const poolTransactions = [...this.filterMempoolTransactions()]
+      .sort((a, b) => a.input.fee - b.input.fee)
+      .slice(STRATING_INDEX, ENDING_INDEX);
+
+    const blockTransactions = [
+      // Include coinbase transaction with pool transactions
+      this.wallet.createCoinbaseTransaction(this.wallet.address),
+      ...poolTransactions,
+    ];
+
+    return blockTransactions;
+  }
+
   // When a node finds a proof-of-work, it broadcasts the block to all nodes
   broadcastBlock(block: Block) {
     // send block to network
@@ -94,14 +105,22 @@ export class Node {
 
   // Nodes accept the block only if all transactions in it are valid and not already spent
   validateBlock(block: Block) {
-    // validate block
-    return true;
+    if (this.chechValidTransactions(block) && this.checkValidHash(block))
+      return true;
+
+    return false;
   }
 
-  // Miners select from a pool of transactions, verifying that the sender has sufficient funds to complete the transaction
-  validateTransaction(transaction: Transaction) {
-    // validate transaction
-    return true;
+  private filterMempoolTransactions() {
+    // clear mempool for verified transactions
+    this.mempool = this.mempool.filter(
+      (transaction) =>
+        !this.blockchain.chain
+          .flatMap((block) => block.transactions.map((t) => t.hash))
+          .includes(transaction.hash)
+    );
+
+    return this.mempool;
   }
 
   private createBlockHeader = (): BlockHeader => {
@@ -120,20 +139,22 @@ export class Node {
     return this.blockchain.chain[this.blockchain.chain.length - 1].hash;
   }
 
-  private checkValidHash(hash: string): boolean {
-    return hash.startsWith("0".repeat(this.blockchain.difficultyTarget));
+  private chechValidTransactions(block: Block): boolean {
+    // check for already spent transactions
+    const blockchainTxHashes = this.blockchain.chain.flatMap((block) =>
+      block.transactions.map((t) => t.hash)
+    );
+
+    const blockTxHashes = block.transactions.map((t) => t.hash);
+
+    if (blockchainTxHashes.some((hash) => blockTxHashes.includes(hash))) {
+      return false;
+    }
+
+    return true;
   }
 
-  private createCoinbaseTransaction(toAddress: string) {
-    return new Transaction(
-      {
-        fromAddress: null,
-        toAddress,
-        amount: this.blockchain.blockReward,
-        fee: 0,
-      },
-      "",
-      ""
-    );
+  private checkValidHash(block: Block): boolean {
+    return block.hash.startsWith("0".repeat(this.blockchain.difficultyTarget));
   }
 }

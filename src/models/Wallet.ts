@@ -12,7 +12,15 @@ export class Wallet {
   constructor() {
     this.blockchain = new Blockchain(); // Blockchain is a singleton
 
-    const { privateKey, publicKey } = generateKeyPairSync("rsa", {
+    const keys = this.generateKeys();
+    this.privateKey = keys.privateKey;
+    this.publicKey = keys.publicKey;
+
+    this.address = this.generateAddress(this.publicKey);
+  }
+
+  private generateKeys() {
+    return generateKeyPairSync("rsa", {
       modulusLength: 2048,
       publicKeyEncoding: {
         type: "spki",
@@ -23,10 +31,6 @@ export class Wallet {
         format: "pem",
       },
     });
-    this.privateKey = privateKey;
-    this.publicKey = publicKey;
-
-    this.address = this.generateAddress(this.publicKey);
   }
 
   private generateAddress(publicKey: string) {
@@ -57,6 +61,7 @@ export class Wallet {
       toAddress: to,
       amount,
       fee,
+      timestamp: Date.now(),
     };
 
     // create signature
@@ -72,20 +77,24 @@ export class Wallet {
     this.blockchain.broadcastTransaction(transaction);
   }
 
-  getBalance(address: string) {
-    return this.blockchain.chain.reduce((chainAcc, block) => {
-      return (
-        chainAcc +
-        block.transactions.reduce((blockAcc, transaction) => {
-          if (transaction.input.fromAddress === address) {
-            return blockAcc - transaction.input.amount - transaction.input.fee;
-          }
-          if (transaction.input.toAddress === address) {
-            return blockAcc + transaction.input.amount;
-          }
-          return blockAcc;
-        }, 0)
-      );
-    }, 0);
+  public createCoinbaseTransaction(toAddress: string) {
+    const input: TransactionInput = {
+      fromAddress: null,
+      toAddress,
+      amount: this.blockchain.blockReward,
+      fee: 0,
+      timestamp: Date.now(),
+    };
+
+    // create signature
+    const signature = this.signTransaction(input);
+
+    // create transaction hash
+    const hash = this.calculateTransactionHash(input);
+
+    // create transaction
+    const transaction = new Transaction(input, signature, hash);
+
+    return transaction;
   }
 }
