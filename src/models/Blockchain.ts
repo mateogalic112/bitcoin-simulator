@@ -19,6 +19,7 @@ export class Blockchain {
   public HALVING_INTERVAL: number = 210_000; // approx 4 years
   public BLOCK_LIMIT = 1_000_000; // 1MB
   public MINING_DIFFICULTY_INTERVAL = 2016; // approx 2 weeks
+  public TARGET_BLOCK_TIME = 1000 * 60 * 10; // 10 minutes
 
   constructor() {
     if (Blockchain.instance) {
@@ -42,8 +43,61 @@ export class Blockchain {
 
     // If more than half of the nodes validate the block, add it to the chain
     if (validations > this.nodes.length / 2) {
-      this.chain.push(block);
+      this.createNewBlock(block);
     }
+  }
+
+  private createNewBlock(block: Block) {
+    this.chain.push(block);
+
+    if (this.chain.length % this.HALVING_INTERVAL === 0) {
+      this.adjustBlockReward();
+    }
+    if (this.chain.length % this.MINING_DIFFICULTY_INTERVAL === 0) {
+      this.adjustDifficulty();
+    }
+  }
+
+  private adjustBlockReward() {
+    if (this.blockReward === 0) return;
+    this.calculateNewBlockReward();
+  }
+
+  private adjustDifficulty() {
+    const blockProductionRate = this.getBlockProductionRate();
+    if (blockProductionRate < this.TARGET_BLOCK_TIME) {
+      this.difficultyTarget++;
+    } else if (blockProductionRate > this.TARGET_BLOCK_TIME) {
+      this.difficultyTarget--;
+    }
+  }
+
+  private getBlockProductionRate() {
+    const currentInterval = Math.round(
+      this.chain.length / this.MINING_DIFFICULTY_INTERVAL
+    );
+
+    const lastBlock = this.chain[this.chain.length - 1];
+    const startingBlock = this.chain[currentInterval];
+
+    return (
+      (lastBlock.blockHeader.timestamp - startingBlock.blockHeader.timestamp) /
+      this.MINING_DIFFICULTY_INTERVAL
+    );
+  }
+
+  private calculateNewBlockReward() {
+    this.blockReward = this.blockReward / 2;
+
+    if (!this.blockReward.toString().startsWith("0.")) return this.blockReward;
+
+    if (
+      this.blockReward
+        .toString()
+        .split(".")[1]
+        .startsWith("0".repeat(this.cryptoCurrency.DECIMALS))
+    )
+      return 0;
   }
 
   registerNode(node: Node) {

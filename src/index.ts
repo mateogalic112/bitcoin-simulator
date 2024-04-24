@@ -2,8 +2,11 @@ import { Wallet } from "./models/Wallet";
 import { Node } from "./models/Node";
 
 function main() {
-  const mark = new Node("95.220.91.1");
-  const ema = new Node("103.135.65.81");
+  const markWallet = new Wallet();
+  const emaWallet = new Wallet();
+
+  new Node(markWallet.getAddress());
+  new Node(emaWallet.getAddress());
 
   const bob = new Wallet();
   const alice = new Wallet();
