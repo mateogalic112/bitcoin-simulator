@@ -13,7 +13,7 @@ export class Blockchain {
   public chain: Block[] = [];
   public nodes: Node[] = [];
 
-  public difficultyTarget: number = 1; // How many leading zeros the hash must have
+  public difficultyTarget: number = 5; // How many leading zeros the hash must have
   public blockReward: number = 50; // Starting 50 BTC per block
 
   public HALVING_INTERVAL: number = 210_000; // approx 4 years
@@ -37,7 +37,7 @@ export class Blockchain {
 
   broadcastBlockForValidation(broadcastingNode: Node, block: Block) {
     const validations = this.nodes.reduce((acc: number, node: Node) => {
-      if (node !== broadcastingNode && node.validateBlock(block)) acc++;
+      if (node.validateBlock(block)) acc++;
       return acc;
     }, 0);
 
@@ -60,7 +60,7 @@ export class Blockchain {
       this.adjustDifficulty();
     }
 
-    console.log(this.chain);
+    console.log(this.chain.map((b) => b.hash));
   }
 
   private adjustBlockReward() {

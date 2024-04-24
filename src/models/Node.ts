@@ -1,15 +1,34 @@
-import { createHash } from "crypto";
 import { Block, BlockHeader } from "./Block";
 import { Blockchain } from "./Blockchain";
 import { Transaction } from "./Transaction";
+import { Worker } from "worker_threads";
 
 export class Node {
-  private cpuPower = Math.random() * 100; // Simulated CPU power
+  private cpuPower = Math.random() * 1000; // Simulated CPU power
 
   private mempool: Transaction[] = [];
   private blockchain: Blockchain = new Blockchain();
 
-  constructor(public ipAddress: string, private receivingAddress: string) {
+  constructor(public ipAddress: string, private receivingAddress: string) {}
+
+  public createGenesisBlock() {
+    if (this.blockchain.chain.length > 0) return;
+
+    const genesisBlock: Block = {
+      hash: "0".repeat(64),
+      transactions: [],
+      blockHeader: {
+        previousBlockHash: "",
+        timestamp: Date.now(),
+        nonce: 0,
+        difficultyTarget: this.blockchain.difficultyTarget,
+      },
+    };
+
+    this.blockchain.chain.push(genesisBlock);
+  }
+
+  startMining() {
     // register node with blockchain
     this.blockchain.registerNode(this);
 
@@ -25,6 +44,7 @@ export class Node {
 
   // Each node works on finding a difficult proof-of-work for its block
   mineBlock() {
+    console.log(`Node ${this.ipAddress} is mining...`);
     const blockHeader = this.createBlockHeader();
 
     // Simple transaction selection algorithm (highest fee first)
@@ -40,33 +60,40 @@ export class Node {
     ];
 
     // Simple proof-of-work algorithm
-    let hashResult = this.calculateHash(blockHeader, blockTransactions);
-    // Hash has to start with difficultyTarget number of zeros ti be valid
-    while (
-      !hashResult.startsWith("0".repeat(this.blockchain.difficultyTarget))
-    ) {
-      blockHeader.nonce++;
-      hashResult = this.calculateHash(blockHeader, blockTransactions);
-    }
-
-    if (
-      !this.blockchain.chain.find(
-        (block) =>
-          block.blockHeader.previousBlockHash === blockHeader.previousBlockHash
-      )
-    ) {
-      const block: Block = {
+    const worker = new Worker(`./build/worker/miner.js`, {
+      workerData: {
         blockHeader,
-        transactions: blockTransactions,
-        hash: hashResult,
-      };
+        blockTransactions,
+        difficultyTarget: this.blockchain.difficultyTarget,
+      },
+    });
 
-      this.broadcastBlock(block);
-    }
+    worker.on("message", (data) => {
+      blockHeader.nonce = data.blockNonce;
+      const hashResult = data.hashResult;
 
-    setTimeout(() => {
-      this.mineBlock();
-    }, (1000 * 60) / this.cpuPower);
+      if (
+        !this.blockchain.chain.find(
+          (block) =>
+            block.blockHeader.previousBlockHash ===
+            blockHeader.previousBlockHash
+        )
+      ) {
+        const block: Block = {
+          blockHeader,
+          transactions: blockTransactions,
+          hash: hashResult,
+        };
+
+        this.broadcastBlock(block);
+      }
+
+      worker.terminate();
+
+      setTimeout(() => {
+        this.mineBlock();
+      }, (1000 * 60) / this.cpuPower);
+    });
   }
 
   // When a node finds a proof-of-work, it broadcasts the block to all nodes
@@ -78,7 +105,7 @@ export class Node {
   // Nodes accept the block only if all transactions in it are valid and not already spent
   validateBlock(block: Block) {
     // validate block
-    return this.checkValidHash(block.hash);
+    return true;
   }
 
   // Miners select from a pool of transactions, verifying that the sender has sufficient funds to complete the transaction
@@ -104,23 +131,12 @@ export class Node {
     return hash.startsWith("0".repeat(this.blockchain.difficultyTarget));
   }
 
-  private calculateHash(
-    blockHeader: BlockHeader,
-    transactions: Transaction[]
-  ): string {
-    const data = `${blockHeader.previousBlockHash}${blockHeader.timestamp}${
-      blockHeader.nonce
-    }${blockHeader.difficultyTarget}${JSON.stringify(transactions)}`;
-
-    return createHash("sha256").update(data).digest("hex");
-  }
-
   private createCoinbaseTransaction(toAddress: string) {
     return new Transaction(
       {
         fromAddress: null,
         toAddress,
-        amount: 50,
+        amount: this.blockchain.blockReward,
         fee: 0,
       },
       "",
