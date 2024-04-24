@@ -61,6 +61,7 @@ export class Blockchain {
     }
 
     console.log(this.chain.map((b) => b.hash));
+    console.log(this.getCurrentSupply());
   }
 
   private adjustBlockReward() {
@@ -89,6 +90,12 @@ export class Blockchain {
       (lastBlock.blockHeader.timestamp - startingBlock.blockHeader.timestamp) /
       this.MINING_DIFFICULTY_INTERVAL
     );
+  }
+
+  getCurrentSupply() {
+    return this.chain.reduce((acc, block) => {
+      return acc + block.transactions[0].input.amount;
+    }, 0);
   }
 
   private calculateNewBlockReward() {

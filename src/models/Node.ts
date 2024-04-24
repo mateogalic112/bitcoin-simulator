@@ -16,7 +16,7 @@ export class Node {
 
     const genesisBlock: Block = {
       hash: "0".repeat(64),
-      transactions: [],
+      transactions: [this.createCoinbaseTransaction(this.receivingAddress)],
       blockHeader: {
         previousBlockHash: "",
         timestamp: Date.now(),
