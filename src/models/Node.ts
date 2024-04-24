@@ -11,23 +11,6 @@ export class Node {
 
   constructor(public ipAddress: string, private receivingAddress: string) {}
 
-  public createGenesisBlock() {
-    if (this.blockchain.chain.length > 0) return;
-
-    const genesisBlock: Block = {
-      hash: "0".repeat(64),
-      transactions: [this.createCoinbaseTransaction(this.receivingAddress)],
-      blockHeader: {
-        previousBlockHash: "",
-        timestamp: Date.now(),
-        nonce: 0,
-        difficultyTarget: this.blockchain.difficultyTarget,
-      },
-    };
-
-    this.blockchain.chain.push(genesisBlock);
-  }
-
   startMining() {
     // register node with blockchain
     this.blockchain.registerNode(this);
@@ -124,6 +107,9 @@ export class Node {
   };
 
   private getPreviousBlockHash(): string {
+    if (this.blockchain.chain.length === 0) {
+      return "0".repeat(64);
+    }
     return this.blockchain.chain[this.blockchain.chain.length - 1].hash;
   }
 

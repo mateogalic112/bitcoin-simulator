@@ -71,4 +71,21 @@ export class Wallet {
     // broadcast transaction
     this.blockchain.broadcastTransaction(transaction);
   }
+
+  getBalance(address: string) {
+    return this.blockchain.chain.reduce((chainAcc, block) => {
+      return (
+        chainAcc +
+        block.transactions.reduce((blockAcc, transaction) => {
+          if (transaction.input.fromAddress === address) {
+            return blockAcc - transaction.input.amount - transaction.input.fee;
+          }
+          if (transaction.input.toAddress === address) {
+            return blockAcc + transaction.input.amount;
+          }
+          return blockAcc;
+        }, 0)
+      );
+    }, 0);
+  }
 }
