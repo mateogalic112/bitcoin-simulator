@@ -26,14 +26,18 @@ export class Node {
     this.mempool.push(transaction);
   }
 
-  // Each node works on finding a difficult proof-of-work for its block
+  // Each node works on finding a proof-of-work for its block
   mineBlock() {
     console.log(`Node ${this.ipAddress} is mining...`);
+
     const blockHeader = this.createBlockHeader();
 
     const blockTransactions = this.selectBlockTransactions();
 
-    // Simple proof-of-work algorithm
+    /**
+     * Create a new worker thread to mine the block
+     * @notice Worker thread is used to simulate mining process because it is CPU intensive
+     */
     const worker = new Worker(`./build/worker/miner.js`, {
       workerData: {
         blockHeader,
@@ -52,10 +56,7 @@ export class Node {
         hash: hashResult,
       };
 
-      if (
-        !this.blockchain.checkBlockHashAlreadyMined(potentialNewBlock) &&
-        this.validateBlock(potentialNewBlock)
-      ) {
+      if (this.validateBlock(potentialNewBlock)) {
         this.broadcastBlock(potentialNewBlock);
       }
 
@@ -89,7 +90,6 @@ export class Node {
       .slice(STRATING_INDEX, ENDING_INDEX);
 
     const blockTransactions = [
-      // Include coinbase transaction with pool transactions
       this.wallet.createCoinbaseTransaction(this.wallet.address),
       ...poolTransactions,
     ];
@@ -105,9 +105,10 @@ export class Node {
 
   // Nodes accept the block only if all transactions in it are valid and not already spent
   validateBlock(block: Block) {
-    if (this.chechValidTransactions(block) && this.checkValidHash(block))
-      return true;
-
+    if (this.blockchain.checkBlockHashAlreadyMined(block)) return false;
+    if (!this.chechValidTransactions(block)) return false;
+    if (!this.checkValidHash(block)) return false;
+    // TODO: check block size
     return false;
   }
 

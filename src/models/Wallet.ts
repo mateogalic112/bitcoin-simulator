@@ -19,20 +19,6 @@ export class Wallet {
     this.address = this.generateAddress(this.publicKey);
   }
 
-  private generateKeys() {
-    return generateKeyPairSync("rsa", {
-      modulusLength: 2048,
-      publicKeyEncoding: {
-        type: "spki",
-        format: "pem",
-      },
-      privateKeyEncoding: {
-        type: "pkcs8",
-        format: "pem",
-      },
-    });
-  }
-
   private generateAddress(publicKey: string) {
     const hash = createHash("sha256").update(publicKey).digest("hex");
     return `1${hash.substring(0, 34)}`; // Simulated Bitcoin-like address (not real)
@@ -96,5 +82,19 @@ export class Wallet {
     const transaction = new Transaction(input, signature, hash);
 
     return transaction;
+  }
+
+  private generateKeys() {
+    return generateKeyPairSync("rsa", {
+      modulusLength: 2048,
+      publicKeyEncoding: {
+        type: "spki",
+        format: "pem",
+      },
+      privateKeyEncoding: {
+        type: "pkcs8",
+        format: "pem",
+      },
+    });
   }
 }
