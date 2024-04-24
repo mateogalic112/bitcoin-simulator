@@ -77,6 +77,10 @@ export class Node {
         this.mineBlock();
       }, (1000 * 60) / this.cpuPower);
     });
+
+    worker.on("error", (msg) => {
+      console.log(msg);
+    });
   }
 
   // When a node finds a proof-of-work, it broadcasts the block to all nodes
