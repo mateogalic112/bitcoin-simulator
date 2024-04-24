@@ -2,25 +2,23 @@ import { Block } from "./Block";
 import { Node } from "./Node";
 import { Transaction } from "./Transaction";
 
-type CryptoCurrency = {
-  decimals: number;
-  totalSupply: number;
-};
-
 export class Blockchain {
   static instance: Blockchain;
-  public chain: Block[] = [];
 
-  public cryptoCurrency: CryptoCurrency = {
-    decimals: 8,
-    totalSupply: 21_000_000,
+  public cryptoCurrency = {
+    DECIMALS: 8,
+    TOTAL_SUPPLY: 21_000_000,
   };
 
-  public blockLimit = 1_000_000; // 1MB
-
+  public chain: Block[] = [];
   public nodes: Node[] = [];
-  public difficultyTarget: string = "1234";
-  public blockReward: number = 50;
+
+  public difficultyTarget: number = 1; // How many leading zeros the hash must have
+  public blockReward: number = 50; // Starting 50 BTC per block
+
+  public HALVING_INTERVAL: number = 210_000; // approx 4 years
+  public BLOCK_LIMIT = 1_000_000; // 1MB
+  public MINING_DIFFICULTY_INTERVAL = 2016; // approx 2 weeks
 
   constructor() {
     if (Blockchain.instance) {
@@ -38,9 +36,7 @@ export class Blockchain {
 
   broadcastBlockForValidation(broadcastingNode: Node, block: Block) {
     const validations = this.nodes.reduce((acc: number, node: Node) => {
-      if (node !== broadcastingNode && node.validateBlock(block)) {
-        acc++;
-      }
+      if (node !== broadcastingNode && node.validateBlock(block)) acc++;
       return acc;
     }, 0);
 

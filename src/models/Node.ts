@@ -12,46 +12,43 @@ export class Node {
     this.blockchain.registerNode(this);
   }
 
-  // Each node collects new transactions into a block
+  // Each node collects new transactions into a mempool
   receiveTransaction(transaction: Transaction) {
     this.mempool.push(transaction);
   }
 
   // Each node works on finding a difficult proof-of-work for its block
   mineBlock() {
-    const previousBlock =
-      this.blockchain.chain[this.blockchain.chain.length - 1];
-    const previousBlockHash = previousBlock.blockHeader.previousBlockHash;
+    const blockHeader = this.createBlockHeader();
 
-    const blockHeader: BlockHeader = {
-      previousBlockHash,
-      nonce: 0,
-      timestamp: Date.now(),
-      difficultyTarget: this.blockchain.difficultyTarget,
-    };
-
+    // Simple transaction selection algorithm (highest fee first)
+    // Block size is limited to 1MB
     const poolTransactions = this.mempool
       .sort((a, b) => b.input.fee - a.input.fee)
-      .slice(0, 3); // Simulate block size limit
+      .slice(0, 3); // We have fixed transaction size of 250KB for simplicity
 
+    // Include coinbase transaction with pool transactions
     const blockTransactions = [
       this.createCoinbaseTransaction(this.receivingAddress),
       ...poolTransactions,
     ];
 
-    const difficultyTarget = parseInt(this.blockchain.difficultyTarget);
-
     // Simple proof-of-work algorithm
-    while (blockHeader.nonce < difficultyTarget) {
+    let hashResult = this.calculateHash(blockHeader, blockTransactions);
+    // Hash has to start with difficultyTarget number of zeros ti be valid
+    while (
+      !hashResult.startsWith("0".repeat(this.blockchain.difficultyTarget))
+    ) {
       blockHeader.nonce++;
-      this.calculateHash(blockHeader, blockTransactions);
+      hashResult = this.calculateHash(blockHeader, blockTransactions);
     }
 
     const block: Block = {
       blockHeader,
       transactions: blockTransactions,
-      hash: this.calculateHash(blockHeader, blockTransactions),
+      hash: hashResult,
     };
+
     this.broadcastBlock(block);
   }
 
@@ -64,7 +61,7 @@ export class Node {
   // Nodes accept the block only if all transactions in it are valid and not already spent
   validateBlock(block: Block) {
     // validate block
-    if (block.hash === this.blockchain.difficultyTarget) return true;
+    return this.checkValidHash(block.hash);
   }
 
   // Miners select from a pool of transactions, verifying that the sender has sufficient funds to complete the transaction
@@ -73,15 +70,30 @@ export class Node {
     return true;
   }
 
+  private createBlockHeader = (): BlockHeader => {
+    return {
+      previousBlockHash: this.getPreviousBlockHash(),
+      nonce: 0,
+      timestamp: Date.now(),
+      difficultyTarget: this.blockchain.difficultyTarget,
+    };
+  };
+
+  private getPreviousBlockHash(): string {
+    return this.blockchain.chain[this.blockchain.chain.length - 1].hash;
+  }
+
+  private checkValidHash(hash: string): boolean {
+    return hash.startsWith("0".repeat(this.blockchain.difficultyTarget));
+  }
+
   private calculateHash(
     blockHeader: BlockHeader,
     transactions: Transaction[]
   ): string {
     const data = `${blockHeader.previousBlockHash}${blockHeader.timestamp}${
       blockHeader.nonce
-    }${blockHeader.difficultyTarget}${JSON.stringify(
-      transactions.map((t) => t.hash)
-    )}`;
+    }${blockHeader.difficultyTarget}${JSON.stringify(transactions)}`;
 
     return createHash("sha256").update(data).digest("hex");
   }

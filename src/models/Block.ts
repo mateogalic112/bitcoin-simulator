@@ -4,7 +4,7 @@ export type BlockHeader = {
   previousBlockHash: string;
   timestamp: number;
   nonce: number;
-  difficultyTarget: string;
+  difficultyTarget: number;
 };
 
 export type Block = {
