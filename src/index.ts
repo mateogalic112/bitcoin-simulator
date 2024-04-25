@@ -12,6 +12,7 @@ function main() {
     new Node("16.205.235.171", mark).startMining();
   }, 1000 * 5);
 
+  // Create new user Alice
   const alice = new Wallet();
 
   // Satoshi sends bitcoins to Alice

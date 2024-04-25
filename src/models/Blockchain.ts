@@ -17,7 +17,7 @@ export class Blockchain {
   public blockReward: number = 50; // Starting 50 BTC per block
 
   public HALVING_INTERVAL: number = 210_000; // approx 4 years
-  public BLOCK_LIMIT = 1_000_000; // 1MB
+  public BLOCK_SIZE_LIMIT = 1_000_000; // 1MB
   public MINING_DIFFICULTY_INTERVAL = 2016; // approx 2 weeks
   public TARGET_BLOCK_TIME = 1000 * 60 * 10; // 10 minutes
 
@@ -96,15 +96,11 @@ export class Blockchain {
   private calculateNewBlockReward() {
     this.blockReward = this.blockReward / 2;
 
-    if (!this.blockReward.toString().startsWith("0.")) return this.blockReward;
-
     if (
-      this.blockReward
-        .toString()
-        .split(".")[1]
-        .startsWith("0".repeat(this.cryptoCurrency.DECIMALS))
+      this.blockReward + this.getCurrentSupply() >
+      this.cryptoCurrency.TOTAL_SUPPLY
     )
-      return 0;
+      this.blockReward = 0;
   }
 
   registerNode(node: Node) {

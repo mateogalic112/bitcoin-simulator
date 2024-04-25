@@ -106,9 +106,13 @@ export class Node {
   // Nodes accept the block only if all transactions in it are valid and not already spent
   validateBlock(block: Block) {
     if (this.blockchain.checkBlockHashAlreadyMined(block)) return false;
+
     if (!this.chechValidTransactions(block)) return false;
+
     if (!this.checkValidHash(block)) return false;
-    // TODO: check block size
+
+    if (!this.checkBlockSize(block)) return false;
+
     return false;
   }
 
@@ -140,8 +144,8 @@ export class Node {
     return this.blockchain.chain[this.blockchain.chain.length - 1].hash;
   }
 
+  // check for already spent transactions
   private chechValidTransactions(block: Block): boolean {
-    // check for already spent transactions
     const blockchainTxHashes = this.blockchain.chain.flatMap((block) =>
       block.transactions.map((t) => t.hash)
     );
@@ -157,5 +161,14 @@ export class Node {
 
   private checkValidHash(block: Block): boolean {
     return block.hash.startsWith("0".repeat(this.blockchain.difficultyTarget));
+  }
+
+  private checkBlockSize(block: Block): boolean {
+    return (
+      block.transactions.reduce(
+        (acc, transaction) => acc + transaction.getTransactionSize(),
+        0
+      ) <= this.blockchain.BLOCK_SIZE_LIMIT
+    );
   }
 }
