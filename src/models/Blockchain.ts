@@ -85,7 +85,8 @@ export class Blockchain {
     );
 
     const lastBlock = this.chain[this.chain.length - 1];
-    const startingBlock = this.chain[currentInterval];
+    const startingBlock =
+      this.chain[(currentInterval - 1) * this.MINING_DIFFICULTY_INTERVAL];
 
     return (
       (lastBlock.blockHeader.timestamp - startingBlock.blockHeader.timestamp) /
@@ -111,17 +112,18 @@ export class Blockchain {
     this.nodes = this.nodes.filter((n) => n !== node);
   }
 
+  // Only check for coinbase transactions because that is how bitcoin is created
   getCurrentSupply() {
     return this.chain.reduce((acc, block) => {
       return acc + block.transactions[0].input.amount;
     }, 0);
   }
 
-  checkBlockHashAlreadyMined(newBlock: Block) {
+  checkBlockHashAlreadyMined(proposedBlock: Block) {
     return !!this.chain.find(
       (block) =>
         block.blockHeader.previousBlockHash ===
-        newBlock.blockHeader.previousBlockHash
+        proposedBlock.blockHeader.previousBlockHash
     );
   }
 
@@ -130,12 +132,15 @@ export class Blockchain {
       return (
         chainAcc +
         block.transactions.reduce((blockAcc, transaction) => {
+          // If transaction is from the address, subtract the amount + fee
           if (transaction.input.fromAddress === address) {
             return blockAcc - transaction.input.amount - transaction.input.fee;
           }
+          // If transaction is to the address, add the amount
           if (transaction.input.toAddress === address) {
             return blockAcc + transaction.input.amount;
           }
+          // If block is coinbase transaction, miner gets all the fees
           if (block.transactions[0].input.toAddress === address) {
             return blockAcc + transaction.input.fee;
           }
